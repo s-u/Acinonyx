@@ -171,8 +171,8 @@ icontainer <- function(parent = NULL, window, frame, flags)
 redraw.iPlot <- function(x, entirely=FALSE, ...)
   invisible(.Call(A_PlotRedraw, x, entirely))
 
-redraw.iVisual <- function(x, ...)
-  invisible(.Call(A_PlotRedraw, x))
+redraw.iVisual <- function(x, entirely=FALSE, ...)
+  invisible(.Call(A_PlotRedraw, x, entirely))
 
 primitives.iPlot <- function(x, ...)
 invisible(.Call(A_PlotPrimitives, x))
