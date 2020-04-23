@@ -50,13 +50,13 @@ extern "C" {
 		APoint location;
 	} AEvent;
 
-#define AMkRect(x,y,w,h) ((ARect) { (x),(y),(w),(h) })
-#define AMkPoint(x,y) ((APoint) { (x),(y) })
-#define AMkSize(w,h) ((ASize) { (w),(h) })
-#define AMkRange(b,l) ((ARange) { (b),(l) })
-#define AMkDataRange(b,l) ((ADataRange) { (b),(l) })
-#define AMkEvent(e,f,k,l) ((AEvent) { (e),(f),(k),(l) })
-#define AMkColor(r,g,b,a) ((AColor) { (r),(g),(b),(a) })
+#define AMkRect(x,y,w,h) ((ARect) { (AFloat)(x),(AFloat)(y),(AFloat)(w),(AFloat)(h) })
+#define AMkPoint(x,y) ((APoint) { (AFloat)(x),(AFloat)(y) })
+#define AMkSize(w,h) ((ASize) { (AFloat)(w),(AFloat)(h) })
+#define AMkRange(b,l) ((ARange) { (AFloat)(b),(AFloat)(l) })
+#define AMkDataRange(b,l) ((ADataRange) { (double)(b),(double)(l) })
+#define AMkEvent(e,f,k,l) ((AEvent) { (int)(e),(int)(f),(int)(k),(APoint)(l) })
+#define AMkColor(r,g,b,a) ((AColor) { (AFloat)(r),(AFloat)(g),(AFloat)(b),(AFloat)(a) })
 
 #define AMAX(X,Y) (((X) > (Y))?(X):(Y))
 #define AMIN(X,Y) (((X) < (Y))?(X):(Y))
