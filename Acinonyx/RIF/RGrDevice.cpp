@@ -501,7 +501,7 @@ SEXP RAcinonyxDevice(SEXP args)
 		canvas    = RGBpar(tmps, 0) | 0xff000000; /* force opaque */
 		if (args != R_NilValue) {
 			tmps      = CAR(args); args = CDR(args);
-			if (!isNull(tmps)) {
+			if (tmps != R_NilValue) {
 				tmps = Rf_coerceVector(tmps, REALSXP);
 				if (LENGTH(tmps) == 1) {
 					dpix = dpiy = REAL(tmps)[0];
