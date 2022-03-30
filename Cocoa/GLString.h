@@ -16,6 +16,7 @@
 	CGLContextObj cgl_ctx; // current context at time of texture creation
 	GLuint texName;
 	NSSize texSize;
+	float  texScale;
 	
 	NSAttributedString * string;
 	NSColor *textColor; // default is opaque white
@@ -58,6 +59,7 @@
 - (NSSize) marginSize; // current margins for text offset and pads for dynamic frame
 
 - (void) genTexture; // generates the texture without drawing texture to current context
+- (void) genTextureWithScale: (float) scale; // generates the texture without drawing texture to current context
 - (void) drawWithBounds:(NSRect)bounds; // will update the texture if required due to change in settings (note context should be setup to be orthographic scaled to per pixel scale)
 - (void) drawAtPoint:(NSPoint)point;
 - (void) drawAtPoint:(NSPoint)point withAdjustment: (NSPoint) adj rotation: (float) rot scale: (float) scale;

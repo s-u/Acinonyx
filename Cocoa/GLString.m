@@ -82,6 +82,7 @@
 	texName = 0;
 	texSize.width = 0.0f;
 	texSize.height = 0.0f;
+	texScale = 1.0f;
 	[attributedString retain];
 	string = attributedString;
 	[text retain];
@@ -121,54 +122,64 @@
 	return [self initWithAttributedString:[[[NSAttributedString alloc] initWithString:aString attributes:attribs] autorelease] withTextColor:[NSColor colorWithDeviceRed:1.0f green:1.0f blue:1.0f alpha:1.0f] withBoxColor:[NSColor colorWithDeviceRed:1.0f green:1.0f blue:1.0f alpha:0.0f] withBorderColor:[NSColor colorWithDeviceRed:1.0f green:1.0f blue:1.0f alpha:0.0f]];
 }
 
-- (void) genTexture; // generates the texture without drawing texture to current context
+- (void) genTexture {
+	[self genTextureWithScale: 1.0f];
+}
+
+/* scale is pixels per point, typically 2 for Retina back-ends */
+- (void) genTextureWithScale: (float) scale;
 {
-	NSImage * image;
 	NSBitmapImageRep * bitmap;
-	
+
 	NSSize previousSize = texSize;
-	
-	if ((NO == staticFrame) && (0.0f == frameSize.width) && (0.0f == frameSize.height)) { // find frame size if we have not already found it
-		frameSize = [string size]; // current string size
-		frameSize.width += marginSize.width * 2.0f; // add padding
-		frameSize.height += marginSize.height * 2.0f;
-	}
-	image = [[NSImage alloc] initWithSize:frameSize];
-	
-	[image lockFocus];
-	[[NSGraphicsContext currentContext] setShouldAntialias:antialias];
-	
-	/*
-	if ([boxColor alphaComponent]) { // this should be == 0.0f but need to make sure
-		[boxColor set]; 
-		NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(NSMakeRect (0.0f, 0.0f, frameSize.width, frameSize.height) , 0.5, 0.5)
-								cornerRadius:cRadius];
-		[path fill];
-	}
-	
-	if ([borderColor alphaComponent]) {
-		[borderColor set]; 
-		NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(NSMakeRect (0.0f, 0.0f, frameSize.width, frameSize.height), 0.5, 0.5) 
-								cornerRadius:cRadius];
-		[path setLineWidth:1.0f];
-		[path stroke];
-	}
-	*/
+
+	// make sure the frame size is valid
+	[self frameSize];
+
+	/* textures cannot have odd sizes, make sure the texture size is valid */
+	unsigned int texW = (unsigned int) ((frameSize.width + 0.5) * scale);
+	unsigned int texH = (unsigned int) ((frameSize.height + 0.5) * scale);
+	if (texW < 4) texW = 4;
+	if (texW & 1) texW++;
+	if (texH < 4) texH = 4;
+	if (texH & 1) texH++;
+
+	/* create a new bitmap image rep to draw into */
+	bitmap = [[NSBitmapImageRep alloc]
+		     initWithBitmapDataPlanes:nil
+				   pixelsWide:texW
+				   pixelsHigh:texH
+				bitsPerSample:8
+			      samplesPerPixel:4
+				     hasAlpha:true
+				     isPlanar:false
+			       colorSpaceName:NSCalibratedRGBColorSpace
+				 bitmapFormat:0
+				  bytesPerRow:texW * 4
+				 bitsPerPixel:0];
 #ifdef DEBUG
 	NSLog(@"textColor=%@", textColor);
 #endif
+	/* set the logical size to match the frame */
+	bitmap.size = frameSize;
+
+	NSGraphicsContext *ctx = [NSGraphicsContext graphicsContextWithBitmapImageRep:bitmap];
+	[NSGraphicsContext saveGraphicsState];
+	[NSGraphicsContext setCurrentContext: ctx];
 	[textColor set]; 
 	[string drawAtPoint:NSMakePoint (marginSize.width, marginSize.height)]; // draw at offset position
-	bitmap = [[NSBitmapImageRep alloc] initWithFocusedViewRect:NSMakeRect (0.0f, 0.0f, frameSize.width, frameSize.height)];
-	[image unlockFocus];
+	[ctx flushGraphics];
+	[NSGraphicsContext restoreGraphicsState];
+
 	texSize.width = [bitmap pixelsWide];
 	texSize.height = [bitmap pixelsHigh];
-	//NSLog(@"hasAlpha=%d", [bitmap hasAlpha]);
+	texScale = scale;
 
 #ifdef DEBUG
 	unsigned char *foo = [bitmap bitmapData];
+	NSLog(@"text: \"%@\", size: %f x %f -> %d x %d", string, frameSize.width, frameSize.height, texW, texH);
 	printf("texture [");
-	{ int i; for (i = 0; i < 32; i++) printf("%02x%s", (int) foo[i + (int)texSize.width * 6 * 4 + 8], ((i & 3) == 3) ? " " : "-"); }
+	{ int i; for (i = 0; i < 32; i++) printf("%02x%s", (int) foo[i + texW * 6 * 4 + 8], ((i & 3) == 3) ? " " : "-"); }
 	printf("]\n");
 	/*
 	 unsigned char R = ((unsigned char)([textColor redComponent] * 255.0));
@@ -178,6 +189,7 @@
 	{ int i = 0, n = (int) [bitmap pixelsWide] * (int) [bitmap pixelsHigh]; for(; i < n; i++) { unsigned char a = foo[i * 4 + 3]; if (a) { foo[i * 4] = SC(R); foo[i * 4 + 1] = SC(G); foo[i * 4 + 2] = SC(B); } } }
 	 */
 #endif
+
 	if ((cgl_ctx = CGLGetCurrentContext())) { // if we successfully retrieve a current context (required)
 		glPushAttrib(GL_TEXTURE_BIT);
 		if (0 == texName) glGenTextures (1, &texName);
@@ -194,7 +206,6 @@
 		NSLog (@"StringTexture -genTexture: Failure to get current OpenGL context");
 	
 	[bitmap release];
-	[image release];
 	
 	requiresUpdate = NO;
 }
@@ -403,10 +414,10 @@
 		double th = rot * M_PI / 180.0; // theta
 		double cth = cos(th), sth = sin(th); // cos(theta), sin(theta)
 		// base point in x (width) and y (height) direction (delta from point of text origin)
-		lr.x = (texSize.width * scale) * cth;
-		lr.y = (texSize.width * scale) * sth;
-		ul.x = - (texSize.height * scale) * sth;
-		ul.y = (texSize.height * scale) * cth;
+		lr.x = (texSize.width * scale / texScale) * cth;
+		lr.y = (texSize.width * scale / texScale) * sth;
+		ul.x = - (texSize.height * scale / texScale) * sth;
+		ul.y = (texSize.height * scale / texScale) * cth;
 		// diagonal point
 		ur.x = lr.x + ul.x;
 		ur.y = lr.y + ul.y;
