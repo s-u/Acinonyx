@@ -52,22 +52,21 @@ static APoint NSEventLoc2AEPoint(NSEvent *e) {
 #endif
 		/* <- anti-aliasing */
 	0 };
-    self = [super initWithFrame:frame pixelFormat:[[NSOpenGLPixelFormat alloc] initWithAttributes:(NSOpenGLPixelFormatAttribute*)attrs]];
-    if (self) {
-#ifdef RETINA_SUPPORT
-        // Should we use hi-res on Retina?
-        [self  setWantsBestResolutionOpenGLSurface:YES];
-#endif
-		// visual = new MyVisual(AMkRect(frame.origin.x,frame.origin.y,frame.size.width,frame.size.height));
+
+	self = [super initWithFrame:frame pixelFormat:[[NSOpenGLPixelFormat alloc] initWithAttributes:(NSOpenGLPixelFormatAttribute*)attrs]];
+	//NSLog(@"***=== CocoaView: initWithFrame: %f,%f,%f,%f", frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
+	if (self) {
+		// Should we use hi-res on Retina?
+		[self setWantsBestResolutionOpenGLSurface:YES];
 		visual = (AVisual*) aVisual->retain();
-    }
-    return self;
+	}
+	return self;
 }
 
 - (void)drawRect:(NSRect)rect {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSRect frame = [self frame];
-	// NSLog(@" frame = %f,%f - %f x %f\n", frame.origin.x,frame.origin.y,frame.size.width,frame.size.height);
+	/*NSLog(@" CocoaView frame = %f,%f - %f x %f\n", frame.origin.x,frame.origin.y,frame.size.width,frame.size.height); */
 
 	/*NSLog(@"OpenGL:\n - vendor = '%s'\n - renderer = '%s'\n - version = '%s'\n - exts = '%s'",
 	glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION), glGetString(GL_EXTENSIONS)); */

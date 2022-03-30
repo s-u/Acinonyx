@@ -44,7 +44,8 @@ bool AWindow::event(AEvent event)
 
 void AWindow::setFrame(ARect frame) {
 	if (frame.width != _frame.width || frame.height != _frame.height) {
-		_frame = frame;
+		/* NOTE: _gl_frame is adjusted in begin() */
+		_gl_frame = _frame = frame;
 		setRedrawLayer(LAYER_ROOT);
 		AVisual *rv = (AVisual*) _rootVisual;
 		if (rv)

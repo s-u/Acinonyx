@@ -33,7 +33,7 @@ class AWindow : public AObject
 protected:
 	AObject *modalOwner;
 	AObject *_rootVisual;
-	ARect _frame;
+	ARect _frame, _gl_frame;
 	
 	unsigned int _layers, _redraw_layer;
 	texture_t _layer[_max_layers];
@@ -45,6 +45,7 @@ public:
 
 	AWindow(ARect frame) : modalOwner(0), _rootVisual(0), _frame(frame), dirtyFlag(0) {
 		_redraw_layer = _layers = 0;
+		_gl_frame = _frame;
 		dirtyFlagLayer = LAYER_TRANS; /* by default dirty flag triggers the transient layer only - use setDirtyFlagLayer() to change this */
 		text_color = AMkColor(0.0, 0.0, 0.0, 1.0);
 		OCLASS(AWindow)
@@ -64,13 +65,18 @@ public:
 		ALog("OpenGL extensions: %s", glGetString(GL_EXTENSIONS));
 		first_gl = 0;
 	}
-	
+
+	void setPixelSize(AFloat x, AFloat y) {
+		_gl_frame.width = x;
+		_gl_frame.height = y;
+	}
+
 	bool freezeLayer(vsize_t layer) {
 		glDisable(GL_SCISSOR_TEST);
 		if (layer >= _max_layers) return false;
 		GLC(glBindTexture(A_TEXTURE_TYPE, _layer[layer]));
 		ALog(" -> freeze layer %d (texture %d)", layer, _layer[layer]);
-		int width = _frame.width, height = _frame.height;
+		int width = _gl_frame.width, height = _gl_frame.height;
 /*
 		int dbuf, rbuf;
 		glGetIntegerv(GL_DRAW_BUFFER, &dbuf);
@@ -121,6 +127,7 @@ public:
 		GLC(glBindTexture(A_TEXTURE_TYPE, _layer[layer]));
 		glBegin(GL_QUADS);
 		int width = _frame.width - 1, height = _frame.height - 1;
+		int txwidth = _gl_frame.width - 1, txheight = _gl_frame.height - 1;
 
 #if ! A_EXACT_TEXTURE
 		int tw = 32, th = 32;
@@ -140,11 +147,11 @@ public:
 #endif
 		glTexCoord2i(0, 0);
 		glVertex3f(TOX, TOY, 0);
-		glTexCoord2i(0, height);
+		glTexCoord2i(0, txheight);
 		glVertex3f(TOX, height TOY, 0);
-		glTexCoord2i(width, height);
+		glTexCoord2i(txwidth, txheight);
 		glVertex3f(width TOX, height TOY, 0);
-		glTexCoord2i(width, 0);
+		glTexCoord2i(txwidth, 0);
 		glVertex3f(width TOX, TOY, 0);
 #undef TO
 #else
@@ -194,8 +201,8 @@ public:
 			_layers = _max_layers;
 		}
 		ALog("%s: begin, redraw layer = %d", describe(), _redraw_layer);
-		glViewport(0.0f, 0.0f, _frame.width, _frame.height);
-		//glClearColor(0.0, 0.0, 0.0, 0);
+		glViewport(0.0f, 0.0f, _gl_frame.width, _gl_frame.height);
+        //glClearColor(0.0, 0.0, 0.0, 0);
 		glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0);
 		if (_redraw_layer == 0)
 			glClear(GL_COLOR_BUFFER_BIT);
@@ -225,8 +232,8 @@ public:
 				
 		glPushMatrix();
 		// change coordinates to graphics coords
-		glTranslatef(-1, -1, 0);
-		glScalef( 2.0 / _frame.width, 2.0 / _frame.height, 1);
+		glLoadIdentity();
+		glOrtho(0.0f, _frame.width, 0.0f, _frame.height, 0.0f, 1.0f);
 		// anti-aliasing trick
 		glTranslatef(0.5, 0.5, 0.0); // subpixel shift to make sure that lines don't wash over two integration regions. However, filled areas are probably still in trouble
 
@@ -297,7 +304,18 @@ public:
 	virtual void glstring(APoint pt, APoint adj, AFloat rot, const char *txt) {}; //  we need some implementation help here since gl cannot draw text
 	virtual void glfont(const char *name, AFloat size) {}
 	virtual ASize glbbox(const char *txt) { return AMkSize(strlen(txt) * 5.6, 10.0); } // jsut a very crude fallback
-	
+
+	/* convert points to pixels - needed for some OpenGL functions that operate on pixels such as glScissor */
+	virtual ARect xy2pixel(ARect what) {
+		if (_gl_frame.width == _frame.width &&
+		    _gl_frame.height == _gl_frame.height) return what;
+		what.x *= _gl_frame.width / _frame.width;
+		what.width *= _gl_frame.width / _frame.width;
+		what.y *= _gl_frame.height / _frame.height;
+		what.height *= _gl_frame.height / _frame.height;
+		return what;
+	}
+
 	/** specify a dirty flag - a location in memory that can be used to trigger redraws asynchronously. This flag is checked continuously by the heartbeat thread of the window and a value of 1 will trigger a redraw.
 	 @param newDF new dirty flag location - must either point to a location capable of holding an int or be NULL (to disable the dirty flag). Note that the caller is responsible for making sure that the memory location is accessible for the entire lifetime of the window (or until replaced). */
 	void setDirtyFlag(int *newDF) { dirtyFlag = newDF; };

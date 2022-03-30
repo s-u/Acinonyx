@@ -255,6 +255,7 @@ public:
 	}
 	
 	void clip(ARect where) {
+		if (_window) where = _window->xy2pixel(where);
 		glScissor(where.x, where.y, where.width, where.height);
 		ALog("clip to (%g,%g - %g,%g)", where.x, where.y, where.width, where.height);
 		glEnable(GL_SCISSOR_TEST);
